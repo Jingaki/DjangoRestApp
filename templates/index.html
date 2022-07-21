@@ -1,0 +1,103 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+<script>
+    function generate_pdf(){
+        const btn = document.getElementById("create-pdf-button");
+        const loader = document.getElementById("create-pdf-loader");
+        btn.style.display = "none";
+        loader.style.display = "";
+
+
+        const course = document.getElementById("course_input").value;
+        const semster = document.getElementById("semester_input").value;
+        const year = document.getElementById("year_input").value;
+        $.ajax({
+            url : "{% url 'pdf_maker' %}",
+            type : "GET",
+            xhrFields: { responseType: 'blob' },
+            data : {
+              course: course,
+              year: year,
+              semester: semster,
+              csrfmiddlewaretoken: '{{ csrf_token }}',
+            },
+            success : (response) => {
+                const fileName = "badges_"+course+".pdf";
+                let blob = new Blob([response], { type: "application/pdf" });
+ 
+                //Check the Browser type and download the File.
+                let isIE = false || !!document.documentMode;
+                if (isIE) {
+                    window.navigator.msSaveBlob(blob, fileName);
+                } else {
+                    let url = window.URL || window.webkitURL;
+                    let link = url.createObjectURL(blob);
+                    let a = document.createElement("a");
+                    a.setAttribute("download", fileName);
+                    a.setAttribute("href", link);
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+                btn.style.display = "";
+                loader.style.display = "none";
+            },
+            error : () => {
+                alert("There was an error with retrieving all the students. Please refresh the page!");
+                btn.style.display = "";
+                loader.style.display = "none";
+            }
+        });
+    }
+       
+</script>
+
+
+
+<div style="text-align: center;">
+    <div style="display: none;" id="create-pdf-loader" class="spinner-border text-dark" role="status"></div>
+    <input  class="btn btn-outline-dark" id="create-pdf-button" type="submit" onclick="generate_pdf()" value="Create PDF"/>
+</div>
+
+
+<div class="row w-100">
+    <div class="col-12 col-md-8">{% include "students_table.html" with students=students %}</div>
+    <div id="selected_student_container" style="display: none" class="col-12 col-md-4"> {% include "selected_student.html" %} </div>
+</div>
+
+<script>
+function load_current_students_data(fnum){
+    const course = document.getElementById("course_input").value;
+    const semster = document.getElementById("semester_input").value;
+    const year = document.getElementById("year_input").value;
+    $.ajax({
+        url : "/api/student/"+fnum,
+        type : "GET",
+        data : {
+          course: course,
+          year: year,
+          semester: semster,
+          csrfmiddlewaretoken: '{{ csrf_token }}',
+        },
+        success : (response) => {
+            const allHiddenFnum = document.getElementsByName("fnum");
+            for(let i=0; i<allHiddenFnum.length; i++){
+                allHiddenFnum[i].value = response["fnum"];
+            }
+            document.getElementById("attendance").innerText = response["attendance"];
+            document.getElementById("student_name").innerText = response["name"];
+            document.getElementById("selected_student_container").style.display = "";
+            addAchievementsImages(response["achieved"]);
+        },
+        error : () => {
+            alert("There was an error with retrieving the student. Please try again later.");
+        }
+    });
+}
+
+
+load_students_data();
+</script>
+
+{% endblock %}

@@ -1,0 +1,166 @@
+{% load static %}
+
+<script>
+let allAchievements;
+function load_all_achievements(){
+    $.ajax({
+        url : '{% url 'achievements' %}',
+        type : "GET",
+        data : {
+            csrfmiddlewaretoken: '{{ csrf_token }}',
+        },
+        success : (response) => {
+            const container = document.getElementById("achievement_select");
+            container.innerHTML = "";
+            for(let i=0; i<response.length; i++){
+                const ach = response[i];
+                container.innerHTML += '<option value='+ach.id+'>'+ach.id+'</option>';
+            }
+            allAchievements = response;
+        },
+        error : () => {
+            alert("There was an error with retrieving the achievements. Please try again later.");
+        }
+    });
+}
+load_all_achievements();
+
+function student_attends(event){
+    const fnum = event.target.elements.fnum.value;
+    const week = event.target.elements.week.value;
+    const course = document.getElementById("course_input").value;
+    const semster = document.getElementById("semester_input").value;
+    const year = document.getElementById("year_input").value;
+
+    event.preventDefault();
+    $.ajax({
+        url : "{% url 'attend' %}",
+        type : "POST",
+        data : {
+            fnum: fnum,
+            week: week,
+            course: course,
+            year: year,
+            semester: semster,
+            csrfmiddlewaretoken: '{{ csrf_token }}',
+        },
+        success : (response) => {
+            load_current_students_data(fnum);
+        },
+        error : () => {}
+    });
+}
+function student_add_grade(event){
+    const fnum = event.target.elements.fnum.value;
+    const gradeName = event.target.elements.gradeName.value;
+    const gradeEvaluation = event.target.elements.gradeEvaluation.value;
+    const course = document.getElementById("course_input").value;
+    event.preventDefault();
+    $.ajax({
+        url : "{% url 'grade' %}",
+        type : "POST",
+        data : {
+            fnum: fnum,
+            course: course,
+            gradeName: gradeName,
+            gradeEvaluation: gradeEvaluation,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success : (response) => {
+            window.location.reload();
+        },
+        error : () => {}
+    });
+}
+function student_add_achievement(event){
+    const fnum = event.target.elements.fnum.value;
+    const achievement = event.target.elements.achievement.value;
+    const course = document.getElementById("course_input").value;
+    event.preventDefault();
+    $.ajax({
+        url : "{% url 'add_achievement' %}",
+        type : "POST",
+        data : {
+            fnum: fnum,
+            course: course,
+            achievement: achievement,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success : (response) => {
+            load_current_students_data(fnum);
+        },
+        error : () => {}
+    });
+}
+function addAchievementsImages(achievements){
+    document.getElementById("achieved_achievements").innerHTML = "";
+    if (achievements.length === 0){
+        document.getElementById("achieved_achievements_container").style.display="none";
+        return;
+    }
+    document.getElementById("achieved_achievements_container").style.display="";
+    for(let i=0; i<achievements.length; i++){
+        document.getElementById("achieved_achievements").innerHTML +=
+            '<img src="{% get_static_prefix %}images/'+
+            achievements[i]["achievement"]
+            +'.png" style="width: 50px; height: 50px; margin:5px">'
+    }
+}
+</script>
+
+<div style="display: inline-block; width: 100%; margin-left: 1%">
+    <h3 id="student_name" style="text-align: center"></h3>
+    <form class="form_col" method="POST" onsubmit="student_attends(event)">
+        {% csrf_token %}
+        <div class="row" style="text-align: center">
+            <div class="col-12 col-md-4">Total Attendance: <span id="attendance"></span></div>
+            <div class="col-12 col-md-4">
+                <select name="week" class= "form-select form-select-sm">
+                    {% for week in weeks_range %}
+                        <option value="{{ week }}">Week {{ week }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                     <input type="hidden" name="fnum"/>
+                     <input type="hidden" name="action" value="attends"/>
+                     <input type="submit" class="btn btn-outline-dark" value="Attends"/>
+            </div>
+        </div>
+    </form>
+
+    <form class="form_col" method="POST" onsubmit="student_add_grade(event)">
+    {% csrf_token %}
+    <div class="row" style="text-align: center">
+            <div class="col-12 col-md-3">Add grade: </div>
+            <div class="col-12 col-md-3"><input type="text" class="form-control form-control-sm" name="gradeName" placeholder="Name"/></div>
+            <div class="col-12 col-md-3"><input type="text" class="form-control form-control-sm" name="gradeEvaluation" placeholder="Value"/></div>
+            <div class="col-12 col-md-3">
+                     <input type="hidden" name="fnum"/>
+                     <input type="hidden" name="action" value="grade"/>
+                     <input type="submit" class="btn btn-outline-dark" value="Add grade"/>
+            </div>
+    </div>
+    </form>
+
+    <form class="form_col" method="POST" onsubmit="student_add_achievement(event)">
+    {% csrf_token %}
+    <div class="row" style="text-align: center">
+            <div class="col-12 col-md-4">Add achievement: </div>
+            <div class="col-12 col-md-4">
+                <select class= "form-select form-select-sm" name="achievement" id="achievement_select"></select>
+            </div>
+            <div class="col-12 col-md-4">
+                     <input type="hidden" name="fnum"/>
+                     <input type="hidden" name="action" value="achievement"/>
+                     <input type="submit" class="btn btn-outline-dark" value="Add achievement"/>
+            </div>
+    </div>
+    </form>
+
+    <div id="achieved_achievements_container" style="display: none">
+        <h5 style="text-align: center">Current Achievements</h5>
+        <div id="achieved_achievements" class="form_col" style="text-align: center"></div>
+    </div>
+
+</div>

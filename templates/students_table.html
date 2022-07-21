@@ -1,0 +1,184 @@
+{% load humanize %}
+<script>
+let lastSortedIndex = -1;
+let isLastSortAscending = false;
+let lastFnum = undefined;
+
+////////////////////////Filtering and sorting////////////////////////
+function isNumeric(str) {
+  if (typeof str != "string") return false // we only process strings!
+  return !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
+         !isNaN(parseFloat(str)) // ...and ensure strings of whitespace fail
+}
+
+function fixAllIcons(index, ascending){
+    for(let i=0;i<6;i++){
+        document.getElementById("sort_icon_"+i).setAttribute("class", "bi bi-funnel")
+    }
+    if(index<0) return;
+    const newIcon = ascending ? "bi bi-sort-up": "bi bi-sort-down";
+    document.getElementById("sort_icon_"+index).setAttribute("class", newIcon);
+}
+
+function sort_all_rows_of_students_table(index, ascending=true){
+    if(lastSortedIndex === index) ascending = !isLastSortAscending;
+
+    let compareResult = ascending ? -1: 1;
+
+    let mylist = $('#students_table');
+    let listitems = mylist.children(".row");
+    listitems.sort(function(a, b) {
+       let compA = $(a).children()[index].innerText.toUpperCase();
+       let compB = $(b).children()[index].innerText.toUpperCase();
+       if(isNumeric(compA) && !isNumeric(compB)){
+           return -compareResult;
+       }else if(!isNumeric(compA) && isNumeric(compB)){
+           return compareResult;
+       }else if(isNumeric(compA) && isNumeric(compB)){
+           compA = parseFloat(compA);
+           compB = parseFloat(compB);
+       }
+
+       return (compA < compB) ? compareResult : (compA > compB) ? -compareResult : 0;
+    })
+    $(mylist).append(listitems);
+
+    lastSortedIndex = index;
+    isLastSortAscending = ascending;
+    fixAllIcons(index, ascending);
+}
+
+
+function filter_based_on_name_or_faculty_num(e){
+    const input = e.target.value.toLowerCase();
+
+    let mylist = $('#students_table');
+    let listitems = mylist.children(".row");
+    for(let i=0; i<listitems.length; i++){
+        const row = listitems[i];
+        if($(row).children()[0].innerText.toLowerCase().includes(input) ||
+            $(row).children()[1].innerText.toLowerCase().includes(input)){
+            row.style.display = "";
+        }else{
+            row.style.display = "none";
+        }
+    }
+}
+</script>
+
+
+<script>
+////////////////////////State reloading////////////////////////
+
+function load_students_data(){
+    const course = document.getElementById("course_input").value;
+    const semster = document.getElementById("semester_input").value;
+    const year = document.getElementById("year_input").value;
+    $.ajax({
+        url : "{% url 'students' %}",
+        type : "GET",
+        data : {
+          course: course,
+          year: year,
+          semester: semster,
+          csrfmiddlewaretoken: '{{ csrf_token }}',
+        },
+        success : (response) => {
+            const container = document.getElementById("students_table");
+            container.innerHTML = "";
+            if(response.length === 0){
+                container.innerHTML = "<h3 style='text-align: center'>There are no students with in this configuration.<br>" +
+                    "Please change the Course/Year/Semester!</h3>";
+            }
+
+            let lastFnumExists = false;
+            for(let i=0;i<response.length;i++){
+                const s = response[i];
+                lastFnumExists = lastFnumExists || s.fnum === lastFnum;
+                container.innerHTML+=`
+                <div onclick="clickOnRow('${s.fnum}')" class="row students_row">
+                  <div class="col-12 col-md-2 fnum_cell">${s.fnum}</div>
+                  <div class="col-12 col-md-2 name_cell">${ s.name }</div>
+                  <div class="col-12 col-md-2 email_cell">${ s.email }</div>
+                  <div class="col-12 col-md-2 avg_grade_cell">
+                      ${ s.avg_grade >= 0 ?  (Math.round(s.avg_grade * 100) / 100).toFixed(2) : 'no grade'}
+                  </div>
+                  <div class="col-12 col-md-2 email_cell">${ s.attendance }</div>
+                  <div class="col-12 col-md-2 email_cell">${ s.achieved.length }</div>
+                </div>`
+            }
+            if(lastFnumExists){
+                clickOnRow(lastFnum);
+            }else{
+                document.getElementById("selected_student_container").style.display = "none";
+            }
+
+            fixAllIcons(-1,1);
+            lastSortedIndex = -1;
+            isLastSortAscending = false;
+        },
+        error : () => {
+            alert("There was an error with retrieving all the students. Please refresh the page!");
+        }
+    });
+}
+
+function clickOnRow(fnum){
+    if(!fnum) return;
+    const container = document.getElementById("students_table");
+    for(let i=0;i<container.children.length;i++){
+        const row = container.children[i];
+        if(row.children[0].innerText.includes(fnum)){
+            row.classList.add('active');
+        }else{
+            row.classList.remove('active');
+        }
+    }
+    load_current_students_data(fnum);
+    lastFnum = fnum;
+}
+</script>
+
+<div class="row my-3" style="text-align: center">
+    <div class="col-12 col-md-4" >
+        Course:
+        <select onchange="load_students_data()" name="course" id="course_input" class= "form-select form-select-sm">
+            {% for course in courses %}
+                <option value="{{ course.signature }}">{{ course.signature }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-12 col-md-4">
+        Year:
+        <input onchange="load_students_data()"
+               name="year" id="year_input" class="form-control form-control-sm" value="{% now 'Y' %}"/>
+    </div>
+    <div class="col-12 col-md-4">
+        Semester:
+        <select onchange="load_students_data()"
+                name="semester" id="semester_input" class= "form-select form-select-sm">
+            <option value="spring">Spring</option>
+            <option value="fall">Fall</option>
+        </select>
+    </div>
+</div>
+<div id="students" style="font-size: 14px;">
+    <div class="row students_header bg-success">
+      <div onclick="sort_all_rows_of_students_table(0)" class="col-12 col-lg-2 pointer">Faculty Number <i id="sort_icon_0" class="bi bi-funnel"></i> </div>
+      <div onclick="sort_all_rows_of_students_table(1)" class="col-12 col-lg-2 pointer">Name <i id="sort_icon_1" class="bi bi-funnel"></i> </div>
+      <div onclick="sort_all_rows_of_students_table(2)" class="col-12 col-lg-2 pointer">Email <i id="sort_icon_2" class="bi bi-funnel"></i> </div>
+      <div onclick="sort_all_rows_of_students_table(3)" class="col-12 col-lg-2 pointer">Average HW Grade <i id="sort_icon_3" class="bi bi-funnel"></i> </div>
+      <div onclick="sort_all_rows_of_students_table(4)" class="col-12 col-lg-2 pointer">Attendance <i id="sort_icon_4" class="bi bi-funnel"></i> </div>
+      <div onclick="sort_all_rows_of_students_table(5)" class="col-12 col-lg-2 pointer">Achievements <i id="sort_icon_5" class="bi bi-funnel"></i> </div>
+    </div>
+
+    <div id="students_table"></div>
+    <div class="input-group p-1">
+        <input onkeyup="filter_based_on_name_or_faculty_num(event)" type="search" placeholder="Search" class="form-control" />
+        <div class="input-group-append">
+            <button type="button" class="btn btn-primary w-100">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </div>
+</div>

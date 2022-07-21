@@ -1,0 +1,20 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+
+
+ <div class="col-12">
+      <div class="d-flex justify-content-center align-items-center" style="height: 500px">
+            <div class="p-5 bg-info" style="border-radius: 50px">
+                <div class="p-2" style="text-align: center; display: block">
+                    <h2>Log In</h2>
+                </div>
+                <form class="align-self-center p-2" style="text-align: center" method="post">
+                  {% csrf_token %}
+                  {{ form.as_p }}
+                  <button class="btn btn-outline-dark px-5" type="submit">Log In</button>
+                </form>
+            </div>
+      </div>
+</div>
+{% endblock %}

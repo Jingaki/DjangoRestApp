@@ -1,0 +1,65 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta charset="UTF-8">
+<title>{{course}}.pdf</title>
+<pdf:language name="bulgarian"/>
+<style type="text/css">
+  @page { size: A4; margin: 1cm; }
+
+  
+  @font-face {
+      font-family: 'Roboto';
+      src: url("file://{% get_static_prefix %}Roboto.ttf");
+  }
+
+
+  body{
+    font-family: 'Roboto';
+  }
+
+
+  #customers {
+    font-family: 'Roboto';
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  #customers td, #customers th {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+
+  #customers tr:nth-child(even){background-color: #f2f2f2;}
+
+  #customers th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #333;
+    color: white;
+  }
+</style>
+</head>
+<body>
+
+<h1>{{ course }} ACHIEVEMENTS</h1>
+
+<table id="customers">
+  {% for student in students %}
+  <tr>
+    <td> {{ student.name }} </td>
+    <td>
+      {% for ach in student.achieved %}
+        <img src="{% get_static_prefix %}images/{{ ach.achievement }}.png" style="width: 50px; height: 50px; margin:5px">
+      {% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+</body>
+</html>
