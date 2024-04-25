@@ -1,4 +1,5 @@
-# Django-Web-App-Achievement-System
+# Django-Web-App-Achievement-System or grading
+uni project
 
 
 ## How to setup
